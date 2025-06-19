@@ -74,4 +74,18 @@ def modul_prediksi_total(df):
 
     st.dataframe(df_evaluasi[['Tahun', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']])
 
+    # ✅ Tabel Prediksi Masa Depan (Estimasi MAPE vs tahun terakhir)
+    st.subheader("🔮 Estimasi Evaluasi Prediksi 3 Tahun ke Depan")
+    df_future = df_merge[df_merge['Aktual'].isna()].copy()
+
+    last_actual = df_total.iloc[-1]['Aktual']
+    df_future['Aktual Estimasi'] = last_actual
+    df_future['MAE'] = abs(df_future['Aktual Estimasi'] - df_future['Prediksi'])
+    df_future['RMSE'] = (df_future['Aktual Estimasi'] - df_future['Prediksi'])**2
+    df_future['MAPE (%)'] = (abs(df_future['Aktual Estimasi'] - df_future['Prediksi']) / df_future['Aktual Estimasi']) * 100
+    df_future['MAPE (%)'] = df_future['MAPE (%)'].round(2)
+    df_future['Validasi Akurasi'] = df_future['MAPE (%)'].apply(evaluasi_mape_kategori)
+
+    st.dataframe(df_future[['Tahun', 'Prediksi', 'Aktual Estimasi', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']])
+
     return df_merge
