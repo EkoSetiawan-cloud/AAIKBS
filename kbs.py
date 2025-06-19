@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-# Import semua modul yang sudah dibuat
+# Import semua modul
 from Modul_Input import modul_input_page
 from Modul_Preprocessing_Agregasi import modul_preprocessing_agregasi
 from Modul_Clustering import modul_clustering
@@ -10,12 +10,13 @@ from Modul_Prediksi import modul_prediksi
 from Modul_Prediksi_Total import modul_prediksi_total
 from Modul_Kesimpulan import modul_kesimpulan
 
-# Konfigurasi halaman
-st.set_page_config(page_title="KBS - Prediksi Layanan DJID", layout="wide")
-st.sidebar.title("📚 Navigasi Modul")
+# Konfigurasi layout halaman
+st.set_page_config(page_title="KBS - Prediksi Layanan DJID", layout="centered")
 
-# Navigasi
-modul = st.sidebar.radio("Pilih Modul", (
+# Judul dan Navigasi
+st.markdown("<h2 style='text-align:center;'>📚 Navigasi Modul</h2>", unsafe_allow_html=True)
+
+modul = st.radio("Pilih Modul", (
     "Modul Input",
     "Modul Preprocessing",
     "Modul Clustering",
@@ -38,7 +39,7 @@ if 'df_prediksi_total' not in st.session_state:
 if 'df_gabungan' not in st.session_state:
     st.session_state.df_gabungan = None
 
-# Routing antar modul
+# Routing modul
 if modul == "Modul Input":
     st.session_state.df_raw = modul_input_page()
 
@@ -58,7 +59,7 @@ elif modul == "Modul Prediksi":
     if st.session_state.df_agregasi is not None:
         df_pred, df_eval = modul_prediksi(st.session_state.df_agregasi)
         st.session_state.df_prediksi = df_pred
-        st.session_state.df_prediksi_total = df_eval
+        st.session_state.df_prediksi_total = df_eval  # Reuse untuk kesimpulan
     else:
         st.warning("⚠️ Silakan jalankan Modul Preprocessing terlebih dahulu.")
 
@@ -72,4 +73,4 @@ elif modul == "Modul Kesimpulan":
     if st.session_state.df_prediksi_total is not None:
         modul_kesimpulan(st.session_state.df_prediksi_total)
     else:
-        st.warning("⚠️ Data evaluasi tidak ditemukan. Jalankan Modul Evaluasi terlebih dahulu.")
+        st.warning("⚠️ Data evaluasi tidak ditemukan. Jalankan Modul Prediksi terlebih dahulu.")
