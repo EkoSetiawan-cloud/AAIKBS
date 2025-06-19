@@ -65,13 +65,13 @@ def modul_prediksi_total(df):
     # ✅ Tabel Evaluasi Akurasi per Tahun
     st.subheader("✅ Evaluasi Akurasi Total Model Prophet per Tahun")
 
-    df_eval = df_merge.dropna()  # hanya tahun yang ada aktual dan prediksi
-    df_eval['MAE'] = abs(df_eval['Aktual'] - df_eval['Prediksi'])
-    df_eval['RMSE'] = (df_eval['Aktual'] - df_eval['Prediksi'])**2
-    df_eval['MAPE (%)'] = (abs(df_eval['Aktual'] - df_eval['Prediksi']) / df_eval['Aktual']) * 100
-    df_eval['MAPE (%)'] = df_eval['MAPE (%)'].round(2)
-    df_eval['Validasi Akurasi'] = df_eval['MAPE (%)'].apply(evaluasi_mape_kategori)
+    df_evaluasi = df_merge[df_merge['Aktual'].notna()].drop_duplicates(subset='Tahun')
+    df_evaluasi['MAE'] = abs(df_evaluasi['Aktual'] - df_evaluasi['Prediksi'])
+    df_evaluasi['RMSE'] = (df_evaluasi['Aktual'] - df_evaluasi['Prediksi'])**2
+    df_evaluasi['MAPE (%)'] = (abs(df_evaluasi['Aktual'] - df_evaluasi['Prediksi']) / df_evaluasi['Aktual']) * 100
+    df_evaluasi['MAPE (%)'] = df_evaluasi['MAPE (%)'].round(2)
+    df_evaluasi['Validasi Akurasi'] = df_evaluasi['MAPE (%)'].apply(evaluasi_mape_kategori)
 
-    st.dataframe(df_eval[['Tahun', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']])
+    st.dataframe(df_evaluasi[['Tahun', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']])
 
     return df_merge
