@@ -29,7 +29,8 @@ with st.sidebar:
 
 # Inisialisasi session state jika belum ada
 state = st.session_state
-for key in ['df_raw', 'df_agregasi', 'df_clustered_tren', 'df_prediksi', 'df_eval_total']:
+for key in ['df_raw', 'df_agregasi', 'df_clustered', 'df_prediksi',
+            'df_eval_total', 'df_clustered_tren']:
     if key not in state:
         state[key] = None
 
@@ -58,13 +59,9 @@ elif modul == "Model Prediksi Layanan":
         st.warning("⚠️ Silakan jalankan Preprocessing Data terlebih dahulu.")
 
 elif modul == "Evaluasi Model":
-    if state.df_prediksi is not None and isinstance(state.df_prediksi, pd.DataFrame):
-        required_cols = {'Layanan', 'Tahun', 'Aktual', 'Prediksi'}
-        if required_cols.issubset(state.df_prediksi.columns):
-            df_eval_total = modul_evaluasi(state.df_prediksi)
-            state.df_eval_total = df_eval_total
-        else:
-            st.error("❌ Struktur data prediksi tidak valid. Harap jalankan ulang Model Prediksi Layanan.")
+    if state.df_prediksi is not None:
+        df_eval_total = modul_evaluasi(state.df_prediksi)
+        state.df_eval_total = df_eval_total
     else:
         st.warning("⚠️ Data prediksi tidak ditemukan. Jalankan Model Prediksi Layanan terlebih dahulu.")
 
