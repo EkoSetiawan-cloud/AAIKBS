@@ -4,12 +4,12 @@ import streamlit as st
 import pandas as pd
 
 def modul_input_page():
-    st.title("📥 Modul Input: Upload Dataset Kasus")
+    st.title("📥 Modul Input: Upload Dataset Historis Layanan DJID")
 
     st.markdown(
         """
         Modul ini digunakan untuk mengunggah dataset yang akan digunakan dalam proses Knowledge-Based System.
-        Pastikan dataset yang diunggah bertipe `.xlsx` dan memiliki struktur kolom yang relevan dengan kasus.
+        Pastikan dataset yang diunggah bertipe `.xlsx` dan memiliki struktur kolom yang relevan dengan Layanan DJID.
         """
     )
 
@@ -19,7 +19,7 @@ def modul_input_page():
         try:
             df = pd.read_excel(uploaded_file)
             st.success("✅ Dataset berhasil diunggah!")
-            st.write("### Cuplikan Dataset:")
+            st.write("### Tampilan 5 Row Dataset :")
             st.dataframe(df.head())
 
             # ✅ Simpan ke session_state
