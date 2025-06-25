@@ -1,5 +1,3 @@
-# Modul_Prediksi.py
-
 import streamlit as st
 import pandas as pd
 from prophet import Prophet
@@ -33,9 +31,6 @@ def modul_prediksi(df):
         return None, None
 
     layanan_col = 'Layanan DJID'
-    tahun_min = df['Tahun'].min()
-    tahun_max = df['Tahun'].max()
-
     layanan_list = df[layanan_col].unique()
     forecast_list = []
     eval_rows = []
@@ -48,11 +43,11 @@ def modul_prediksi(df):
         prophet_data.columns = ['ds', 'y']
         prophet_data['ds'] = pd.to_datetime(prophet_data['ds'], format='%Y')
 
-        # Fit model
+        # Fit model Prophet
         model = Prophet(yearly_seasonality=False, daily_seasonality=False)
         model.fit(prophet_data)
 
-        # Future: 3 tahun ke depan
+        # Prediksi 3 tahun ke depan
         future = model.make_future_dataframe(periods=3, freq='Y')
         forecast = model.predict(future)
 
@@ -61,12 +56,12 @@ def modul_prediksi(df):
         pred['Layanan'] = layanan
         pred.rename(columns={'yhat': 'Prediksi'}, inplace=True)
 
-        # Gabung prediksi dengan aktual
+        # Gabungkan prediksi dengan aktual
         gabung = pd.merge(pred[['Tahun', 'Layanan', 'Prediksi']], data_layanan, on=['Tahun'], how='left')
         forecast_list.append(pred[['Tahun', 'Layanan', 'Prediksi']])
         gabungan_list.append(gabung)
 
-        # Evaluasi model Prophet
+        # Evaluasi (untuk disimpan meski tidak ditampilkan)
         y_true = prophet_data['y'].values
         y_pred = model.predict(prophet_data)['yhat'].values
         mae = mean_absolute_error(y_true, y_pred)
@@ -77,14 +72,12 @@ def modul_prediksi(df):
             'Layanan': layanan,
             'MAE': mae,
             'RMSE': rmse,
-            'MAPE (%)': round(mape, 2)
+            'MAPE (%)': round(mape, 2),
+            'Validasi Akurasi': evaluasi_mape_kategori(mape)
         })
 
     df_prediksi = pd.concat(gabungan_list, ignore_index=True)
     df_evaluasi = pd.DataFrame(eval_rows)
-
-    # ✅ Tambahkan kolom validasi akurasi
-    df_evaluasi['Validasi Akurasi'] = df_evaluasi['MAPE (%)'].apply(evaluasi_mape_kategori)
 
     # Tabel hasil prediksi
     st.subheader("📊 Tabel Hasil Prediksi (termasuk aktual & prediksi)")
@@ -99,20 +92,14 @@ def modul_prediksi(df):
                       var_name='Tipe', value_name='Jumlah')
 
     fig = px.line(df_long, x='Tahun', y='Jumlah', color='Tipe', markers=True,
-              title=f"Prediksi vs Aktual: {layanan_terpilih}")
+                  title=f"Prediksi vs Aktual: {layanan_terpilih}")
 
-    # Update warna berdasarkan label
     fig.for_each_trace(
         lambda trace: trace.update(line=dict(color='gold')) if trace.name == 'Prediksi' else None
     )
 
     fig.update_traces(mode='lines+markers')
-
     fig.update_layout(xaxis_title='Tahun', yaxis_title='Jumlah Layanan')
     st.plotly_chart(fig, use_container_width=True)
-
-    # Tabel Evaluasi Model
-    st.subheader("✅ Evaluasi Akurasi Model Prophet")
-    st.dataframe(df_evaluasi.sort_values('MAPE (%)'))
 
     return df_prediksi, df_evaluasi
