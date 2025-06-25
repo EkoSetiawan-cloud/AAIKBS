@@ -3,69 +3,57 @@
 import streamlit as st
 import pandas as pd
 
-def modul_kesimpulan(df_prediksi):
-    st.title("🧾 Modul Kesimpulan Analisis")
+def modul_kesimpulan(df_eval_total):
+    st.title("🧾 Modul Kesimpulan Evaluasi Total per Tahun")
 
-    st.markdown(
-        """
-        Modul ini menyajikan **kesimpulan otomatis** berdasarkan hasil evaluasi akurasi model prediksi
-        yang dihitung dari data per layanan maupun data total tahunan.
-        """
-    )
-
-    if df_prediksi is None or df_prediksi.empty:
-        st.warning("⚠️ Data evaluasi tidak tersedia. Jalankan Modul Prediksi atau Evaluasi terlebih dahulu.")
+    if df_eval_total is None or df_eval_total.empty:
+        st.warning("⚠️ Data evaluasi belum tersedia. Jalankan Modul Evaluasi Total terlebih dahulu.")
         return
 
-    # Deteksi kolom validasi & label
-    validasi_col = 'Validasi Akurasi' if 'Validasi Akurasi' in df_prediksi.columns else 'Kategori Akurasi'
-    label_col = 'Layanan' if 'Layanan' in df_prediksi.columns else 'Tahun'
-
     st.subheader("📌 Rangkuman Evaluasi")
-    total = len(df_prediksi)
-    sangat_akurat = len(df_prediksi[df_prediksi[validasi_col].str.contains("Sangat Akurat")])
-    akurat = len(df_prediksi[df_prediksi[validasi_col].str.contains("^Akurat", regex=True)])
-    cukup_akurat = len(df_prediksi[df_prediksi[validasi_col].str.contains("Cukup Akurat")])
-    tidak_akurat = len(df_prediksi[df_prediksi[validasi_col].str.contains("Tidak Akurat")])
+    total = len(df_eval_total)
+    sangat_akurat = len(df_eval_total[df_eval_total['Validasi Akurasi'].str.contains("Sangat Akurat")])
+    akurat = len(df_eval_total[df_eval_total['Validasi Akurasi'].str.contains("^Akurat", regex=True)])
+    cukup_akurat = len(df_eval_total[df_eval_total['Validasi Akurasi'].str.contains("Cukup Akurat")])
+    tidak_akurat = len(df_eval_total[df_eval_total['Validasi Akurasi'].str.contains("Tidak Akurat")])
 
-    st.write(f"- Total data evaluasi: **{total}**")
-    st.write(f"- Sangat Akurat (MAPE ≤ 10%): **{sangat_akurat}**")
-    st.write(f"- Akurat (MAPE ≤ 20%): **{akurat}**")
-    st.write(f"- Cukup Akurat (MAPE ≤ 50%): **{cukup_akurat}**")
-    st.write(f"- Tidak Akurat (MAPE > 50%): **{tidak_akurat}**")
+    st.write(f"- Total tahun evaluasi: **{total}**")
+    st.write(f"- Sangat Akurat (MAPE ≤ 10%): **{sangat_akurat} tahun**")
+    st.write(f"- Akurat (10% < MAPE ≤ 20%): **{akurat} tahun**")
+    st.write(f"- Cukup Akurat (20% < MAPE ≤ 50%): **{cukup_akurat} tahun**")
+    st.write(f"- Tidak Akurat (MAPE > 50%): **{tidak_akurat} tahun**")
 
-    # Identifikasi performa terbaik dan terburuk
-    best_row = df_prediksi.sort_values('MAPE (%)').iloc[0]
-    worst_row = df_prediksi.sort_values('MAPE (%)').iloc[-1]
+    # Tahun terbaik dan terburuk
+    best_row = df_eval_total.sort_values('MAPE (%)').iloc[0]
+    worst_row = df_eval_total.sort_values('MAPE (%)').iloc[-1]
 
-    st.subheader("🏆 Akurasi Terbaik")
+    st.subheader("🏆 Tahun dengan Akurasi Terbaik")
     st.markdown(f"""
-    - **{label_col}:** {best_row[label_col]}
+    - **Tahun:** {best_row['Tahun']}
     - **MAPE:** {best_row['MAPE (%)']:.2f}%
-    - **Kategori:** {best_row[validasi_col]}
+    - **Kategori:** {best_row['Validasi Akurasi']}
     """)
 
-    st.subheader("⚠️ Akurasi Terburuk")
+    st.subheader("⚠️ Tahun dengan Akurasi Terburuk")
     st.markdown(f"""
-    - **{label_col}:** {worst_row[label_col]}
+    - **Tahun:** {worst_row['Tahun']}
     - **MAPE:** {worst_row['MAPE (%)']:.2f}%
-    - **Kategori:** {worst_row[validasi_col]}
+    - **Kategori:** {worst_row['Validasi Akurasi']}
     """)
 
-    # Kesimpulan Otomatis
     st.subheader("📝 Kesimpulan Naratif Otomatis")
+    persentase_baik = round(((sangat_akurat + akurat) / total) * 100, 2)
     kesimpulan = f"""
-Berdasarkan hasil evaluasi terhadap **{total}** entitas (berdasarkan {label_col.lower()}), 
-sebanyak **{sangat_akurat + akurat} entitas ({round((sangat_akurat + akurat)/total*100, 2)}%)**
-tergolong dalam akurasi baik (MAPE ≤ 20%).
+Dari total **{total} tahun evaluasi**, sebanyak **{sangat_akurat + akurat} tahun ({persentase_baik}%)** 
+berada dalam kategori **akurat atau sangat akurat** berdasarkan nilai MAPE.
 
-Entitas dengan performa terbaik adalah **{best_row[label_col]}** dengan MAPE **{best_row['MAPE (%)']:.2f}%**,
-masuk dalam kategori **{best_row[validasi_col]}**.
+Tahun dengan performa terbaik adalah **{best_row['Tahun']}** dengan nilai MAPE hanya **{best_row['MAPE (%)']:.2f}%**
+dan diklasifikasikan sebagai **{best_row['Validasi Akurasi']}**.
 
-Sebaliknya, entitas dengan performa terburuk adalah **{worst_row[label_col]}** 
-dengan MAPE **{worst_row['MAPE (%)']:.2f}%**, tergolong **{worst_row[validasi_col]}**.
+Sebaliknya, tahun dengan performa prediksi terburuk adalah **{worst_row['Tahun']}**, 
+dengan MAPE mencapai **{worst_row['MAPE (%)']:.2f}%** dan dikategorikan sebagai **{worst_row['Validasi Akurasi']}**.
 
-Temuan ini menjadi dasar penting untuk perbaikan data historis, penyesuaian model, 
-dan penentuan kebijakan berbasis data yang lebih presisi.
+Hasil evaluasi ini menunjukkan bahwa model Prophet dapat memberikan hasil prediksi yang sangat baik,
+dan layak dijadikan dasar kebijakan dan perencanaan layanan DJID ke depan.
 """
     st.markdown(kesimpulan)
