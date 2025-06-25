@@ -29,8 +29,7 @@ with st.sidebar:
 
 # Inisialisasi session state jika belum ada
 state = st.session_state
-for key in ['df_raw', 'df_agregasi', 'df_clustered', 'df_prediksi',
-            'df_eval_total', 'df_clustered_tren']:
+for key in ['df_raw', 'df_agregasi', 'df_clustered_tren', 'df_prediksi', 'df_eval_total']:
     if key not in state:
         state[key] = None
 
