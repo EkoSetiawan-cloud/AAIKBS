@@ -1,10 +1,7 @@
-# Modul_Evaluasi.py
-
 import streamlit as st
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 import numpy as np
-import plotly.express as px
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 def evaluasi_mape_kategori(mape):
     if mape <= 10:
@@ -16,88 +13,79 @@ def evaluasi_mape_kategori(mape):
     else:
         return "Tidak Akurat (Inaccurate Forecast)"
 
-def modul_evaluasi(df_aktual, df_prediksi):
-    st.title("📉 Modul Evaluasi Prediksi")
+def modul_evaluasi(df_merge):
+    st.title("📊 Modul Evaluasi")
 
-    st.markdown(
-        """
-        Modul ini mengevaluasi hasil prediksi terhadap data aktual menggunakan metrik:
-        - **MAE (Mean Absolute Error)**
-        - **RMSE (Root Mean Squared Error)**
-        - **MAPE (Mean Absolute Percentage Error)**  
-        
-        Ditambah klasifikasi akurasi berdasarkan nilai MAPE:
-        - ≤ 10%: Sangat Akurat
-        - ≤ 20%: Akurat
-        - ≤ 50%: Cukup Akurat
-        - > 50%: Tidak Akurat
-        """
-    )
-
-    if df_aktual is None or df_prediksi is None:
-        st.warning("⚠️ Data aktual atau prediksi tidak tersedia.")
+    if df_merge is None or df_merge.empty:
+        st.warning("⚠️ Data belum tersedia dari modul prediksi.")
         return
 
-    required_cols = {'Tahun', 'Layanan', 'Jumlah'}
-    if not required_cols.issubset(set(df_aktual.columns)):
-        st.error("❌ Dataset aktual harus memiliki kolom: Tahun, Layanan, Jumlah")
-        return
-    if 'Prediksi' not in df_prediksi.columns:
-        st.error("❌ Dataset prediksi harus memiliki kolom 'Prediksi'")
-        return
+    layanan_terpilih = st.selectbox("📌 Pilih Layanan untuk Evaluasi", sorted(df_merge['Layanan'].unique()))
+    df_layanan = df_merge[df_merge['Layanan'] == layanan_terpilih].copy()
 
-    df_aktual_renamed = df_aktual.rename(columns={'Jumlah': 'Aktual'})
-    df_prediksi_renamed = df_prediksi[['Tahun', 'Layanan', 'Prediksi']]
-    df_merged = pd.merge(df_aktual_renamed, df_prediksi_renamed, on=['Tahun', 'Layanan'], how='inner')
-
-    if df_merged.empty:
-        st.error("❌ Tidak ditemukan data yang cocok antara aktual dan prediksi.")
+    if df_layanan.empty:
+        st.error("❌ Tidak ada data untuk layanan yang dipilih.")
         return
 
-    # Evaluasi per Layanan
-    eval_list = []
-    for layanan in df_merged['Layanan'].unique():
-        data = df_merged[df_merged['Layanan'] == layanan]
-        y_true = data['Aktual'].values
-        y_pred = data['Prediksi'].values
+    # === 1. Evaluasi Data dengan Aktual ===
+    st.subheader("📋 Tabel Evaluasi Error")
+    df_error = df_layanan[df_layanan['Aktual'].notna() & (df_layanan['Aktual'] != 0)].copy()
+    df_error = df_error.drop_duplicates(subset='Tahun', keep='first')  # Hindari duplikat tahun
 
-        mae = mean_absolute_error(y_true, y_pred)
-        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    if df_error.empty:
+        st.warning("⚠️ Tidak ada data aktual yang valid untuk evaluasi error.")
+    else:
+        df_error['Error Absolute'] = (df_error['Aktual'] - df_error['Prediksi']).abs()
+        df_error['Error Persentase (%)'] = ((df_error['Error Absolute'] / df_error['Aktual']) * 100).round(2)
+        df_error['Layanan'] = layanan_terpilih
+        st.dataframe(df_error[['Layanan', 'Tahun', 'Aktual', 'Prediksi', 'Error Absolute', 'Error Persentase (%)']],
+                     use_container_width=True, hide_index=True)
 
-        eval_list.append({
-            'Layanan': layanan,
-            'MAE': mae,
-            'RMSE': rmse,
-            'MAPE (%)': round(mape, 2),
-            'Kategori Akurasi': evaluasi_mape_kategori(mape)
-        })
+    # === 2. Evaluasi Performa Model ===
+    st.subheader("📈 Tabel Evaluasi Performa Model per Tahun")
+    df_eval = df_error.copy()
+    if not df_eval.empty:
+        df_eval['MAE'] = df_eval['Error Absolute']
+        df_eval['RMSE'] = (df_eval['Aktual'] - df_eval['Prediksi']) ** 2
+        df_eval['MAPE (%)'] = df_eval['Error Persentase (%)']
+        df_eval['Validasi Akurasi'] = df_eval['MAPE (%)'].apply(evaluasi_mape_kategori)
+        df_eval['Layanan'] = layanan_terpilih
 
-    df_evaluasi = pd.DataFrame(eval_list).sort_values('MAPE (%)')
+        df_eval_summary = df_eval[['Layanan', 'Tahun', 'Aktual', 'Prediksi', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']]
+        st.dataframe(df_eval_summary, use_container_width=True, hide_index=True)
+    else:
+        df_eval_summary = pd.DataFrame()
 
-    # Tambahkan kolom validasi ke dataframe evaluasi
-    df_evaluasi['Validasi Akurasi'] = df_evaluasi['MAPE (%)'].apply(evaluasi_mape_kategori)
+    # === 3. Prediksi Masa Depan (Estimasi Evaluasi) ===
+    st.subheader("🔮 Prediksi 2 Tahun ke Depan (Estimasi Evaluasi)")
+    df_future = df_layanan[~df_layanan['Tahun'].isin(df_error['Tahun'])].copy()
 
-    st.subheader("📋 Tabel Evaluasi per Layanan")
-    st.dataframe(df_evaluasi)
+    baseline_aktual = df_error['Aktual'].iloc[-1] if not df_error.empty else 1
+    df_future['Aktual (Estimasi)'] = baseline_aktual
+    df_future['MAE'] = (df_future['Aktual (Estimasi)'] - df_future['Prediksi']).abs()
+    df_future['RMSE'] = (df_future['Aktual (Estimasi)'] - df_future['Prediksi']) ** 2
+    df_future['MAPE (%)'] = ((df_future['MAE'] / df_future['Aktual (Estimasi)']) * 100).round(2)
+    df_future['Validasi Akurasi'] = df_future['MAPE (%)'].apply(evaluasi_mape_kategori)
+    df_future['Layanan'] = layanan_terpilih
 
-    # Grafik Ranking
-    st.subheader("🏅 Grafik Ranking Akurasi Model per Layanan")
-    fig_rank = px.bar(df_evaluasi, x='Layanan', y='MAPE (%)', color='Kategori Akurasi',
-                      text='MAPE (%)', title="Ranking MAPE (%)", height=450)
-    fig_rank.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
-    fig_rank.update_layout(xaxis_title='Layanan', yaxis_title='MAPE (%)', uniformtext_minsize=8)
-    st.plotly_chart(fig_rank, use_container_width=True)
+    st.dataframe(df_future[['Layanan', 'Tahun', 'Prediksi', 'Aktual (Estimasi)', 'MAE', 'RMSE', 'MAPE (%)', 'Validasi Akurasi']],
+                 use_container_width=True, hide_index=True)
 
-    # Grafik Line per Layanan (optional)
-    st.subheader("📈 Grafik Aktual vs Prediksi per Layanan")
-    layanan_terpilih = st.selectbox("Pilih Layanan", df_merged['Layanan'].unique())
-    df_layanan = df_merged[df_merged['Layanan'] == layanan_terpilih]
+    # === 4. Ringkasan Global (Berdasarkan Historis Saja) ===
+    st.subheader("📊 Ringkasan Skor Evaluasi Global (Berdasarkan Data Historis)")
+    if not df_eval.empty:
+        global_mae = df_eval['MAE'].mean()
+        global_rmse = np.sqrt(df_eval['RMSE'].mean())
+        global_mape = df_eval['MAPE (%)'].mean()
 
-    df_plot = pd.melt(df_layanan, id_vars='Tahun', value_vars=['Aktual', 'Prediksi'],
-                      var_name='Tipe', value_name='Jumlah')
-    fig_line = px.line(df_plot, x='Tahun', y='Jumlah', color='Tipe', markers=True,
-                       title=f"Perbandingan Aktual vs Prediksi: {layanan_terpilih}")
-    st.plotly_chart(fig_line, use_container_width=True)
+        df_global = pd.DataFrame([{
+            "Layanan": layanan_terpilih,
+            "MAE": round(global_mae, 2),
+            "RMSE": round(global_rmse, 2),
+            "MAPE (%)": round(global_mape, 2),
+            "Validasi Akurasi": evaluasi_mape_kategori(global_mape)
+        }])
 
-    return df_evaluasi, df_merged
+        st.dataframe(df_global, use_container_width=True, hide_index=True)
+
+    return df_eval_summary
